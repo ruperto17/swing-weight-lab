@@ -23,7 +23,7 @@
         <div class="row g-3">
             <div class="col-12">
                 <label class="form-label fw-bold">Club/Build Name</label>
-                <input type="text" id="clubName" class="form-control" placeholder="e.g. Srixon ZX7 7-Iron">
+                <input type="text" id="clubName" class="form-control" placeholder="e.g. 7-Iron">
             </div>
             <div class="col-md-6">
                 <label class="form-label fw-bold">Weight</label>
@@ -55,9 +55,9 @@
             <table class="table align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>Club Name</th>
-                        <th>Specs (W / BP / Torque)</th>
-                        <th>Swing Weight</th>
+                        <th>Club</th>
+                        <th>Specs</th>
+                        <th>SW</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -121,7 +121,7 @@
                 <td><strong>${c.name}</strong></td>
                 <td>
                     <div class="spec-text">${c.weight.toFixed(1)}g / ${c.bp.toFixed(3)}"</div>
-                    <div class="small fw-bold text-muted">${c.inchGrams.toFixed(2)} inch-grams</div>
+                    <div class="small fw-bold text-muted">${c.inchGrams.toFixed(2)}</div>
                 </td>
                 <td><span class="badge bg-primary sw-badge">${formatSW(c.points)}</span></td>
                 <td class="text-end">
