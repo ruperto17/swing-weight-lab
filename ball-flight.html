@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Diagnostic</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #fcfcfc; padding: 20px; font-family: 'Segoe UI', system-ui, sans-serif; color: #444; }
+        .card { max-width: 550px; margin: auto; border-radius: 16px; border: 1px solid #eee; box-shadow: 0 4px 20px rgba(0,0,0,0.03); background: white; }
+        .form-label { font-size: 0.8rem; font-weight: 700; color: #999; text-transform: uppercase; margin-bottom: 4px; }
+        .form-select { border-radius: 8px; border: 1px solid #ddd; padding: 12px; font-weight: 500; }
+        .result-panel { background: #f0f7ff; border: 1px solid #cce3ff; border-radius: 12px; padding: 20px; margin-top: 25px; display: none; transition: all 0.3s ease; }
+        h3 { color: #222; letter-spacing: -0.5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h3 class="text-center mb-4 fw-bold">Flight Diagnostic</h3>
+    <div class="card p-4">
+        <div class="row g-3">
+            <div class="col-6">
+                <label class="form-label">Path</label>
+                <select id="p" class="form-select" onchange="diag()">
+                    <option value="Neutral">Neutral</option>
+                    <option value="Inside-Out">Inside-Out</option>
+                    <option value="Outside-In">Outside-In</option>
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label">Face</label>
+                <select id="f" class="form-select" onchange="diag()">
+                    <option value="Square">Square</option>
+                    <option value="Open">Open</option>
+                    <option value="Closed">Closed</option>
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label">Strike</label>
+                <select id="s" class="form-select" onchange="diag()">
+                    <option value="Center">Center</option>
+                    <option value="Toe">Toe</option>
+                    <option value="Heel">Heel</option>
+                    <option value="Shank">Shank</option>
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label">Club</label>
+                <select id="c" class="form-select" onchange="diag()">
+                    <option value="Iron">Iron</option>
+                    <option value="Driver">Driver</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="out" class="result-panel">
+            <h4 id="resT" class="fw-bold text-primary mb-1"></h4>
+            <p id="resD" class="mb-0 text-secondary" style="line-height: 1.4;"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // [Same Logic Array as before...]
+    const lib = [
+        {p:"Inside-Out", f:"Square", s:"Center", c:"Any", res:"The Straight Push", desc:"Starts right and stays right."},
+        {p:"Inside-Out", f:"Square", s:"Toe", c:"Driver", res:"The Power Draw", desc:"Path pushes it right, Gear Effect draws it back."},
+        {p:"Inside-Out", f:"Square", s:"Heel", c:"Driver", res:"The Push-Fade", desc:"Path pushes it right, Gear Effect slices it further."},
+        {p:"Inside-Out", f:"Square", s:"Toe", c:"Iron", res:"The Draw-Hook", desc:"Path pushes right, toe rotation pulls it left."},
+        {p:"Inside-Out", f:"Square", s:"Heel", c:"Iron", res:"The 'Cheat' Straight", desc:"Heel rotation squares your inside-out path."},
+        {p:"Inside-Out", f:"Open", s:"Center", c:"Any", res:"The Push-Slice", desc:"The 'leaker' that never returns."},
+        {p:"Inside-Out", f:"Open", s:"Toe", c:"Driver", res:"The Straight Push", desc:"Toe-hook spin 'fixes' the open face."},
+        {p:"Inside-Out", f:"Open", s:"Heel", c:"Driver", res:"The Slicer's Grave", desc:"Everything is working to move the ball right."},
+        {p:"Inside-Out", f:"Closed", s:"Center", c:"Any", res:"The Duck Hook", desc:"Starts right, dives violently left."},
+        {p:"Inside-Out", f:"Closed", s:"Toe", c:"Driver", res:"The Snap Hook", desc:"Closed face + Toe gear effect = Disaster."},
+        {p:"Outside-In", f:"Square", s:"Center", c:"Any", res:"The Straight Pull", desc:"Starts left and stays left."},
+        {p:"Outside-In", f:"Square", s:"Heel", c:"Driver", res:"The Banana Slice", desc:"Starts left, curves 40 yards right."},
+        {p:"Outside-In", f:"Square", s:"Toe", c:"Driver", res:"The 'Functional' Pull", desc:"Toe-hook spin stops the slice."},
+        {p:"Outside-In", f:"Square", s:"Heel", c:"Iron", res:"The Pull-Hook", desc:"Heel rotation slams the face shut."},
+        {p:"Outside-In", f:"Open", s:"Center", c:"Any", res:"The Slice", desc:"Starts left/center and peels away."},
+        {p:"Outside-In", f:"Open", s:"Heel", c:"Driver", res:"The Off-the-Planet Slice", desc:"Open face + Heel gear + Left path."},
+        {p:"Outside-In", f:"Closed", s:"Center", c:"Any", res:"The Double Cross", desc:"Starts left and dives further left."},
+        {p:"Outside-In", f:"Closed", s:"Toe", c:"Driver", res:"The Low Hook", desc:"Path and Gear effect fighting for control."},
+        {p:"Neutral", f:"Square", s:"Center", c:"Any", res:"The Unicorn", desc:"Perfectly straight ball flight."},
+        {p:"Neutral", f:"Open", s:"Center", c:"Any", res:"The Standard Fade", desc:"Starts right of target and peels further right."},
+        {p:"Neutral", f:"Closed", s:"Center", c:"Any", res:"The Standard Draw", desc:"Starts left of target and curves further left."},
+        {p:"Neutral", f:"Square", s:"Toe", c:"Driver", res:"The Tight Draw", desc:"Starts straight, Gear Effect brings it left."},
+        {p:"Neutral", f:"Square", s:"Heel", c:"Driver", res:"The Tight Fade", desc:"Starts straight, Gear Effect peels it right."},
+        {p:"Neutral", f:"Open", s:"Toe", c:"Iron", res:"The Weak Flare", desc:"Starts right and 'fans' further right as the face twists open."},
+        {p:"Neutral", f:"Open", s:"Toe", c:"Driver", res:"The Straight Push", desc:"The Toe Gear-Effect (Left) cancels out the Open Face (Right)."},
+        {p:"Neutral", f:"Open", s:"Heel", c:"Driver", res:"The Slice-Plus", desc:"Open face plus heel gear-effect equals a massive curve right."},
+        {p:"Neutral", f:"Closed", s:"Heel", c:"Iron", res:"The Hard Pull", desc:"Starts left and the heel impact slams the face shut even more."},
+        {p:"Neutral", f:"Closed", s:"Toe", c:"Driver", res:"The Snap Hook", desc:"Closed face plus toe gear-effect makes the ball nose-dive left."},
+        {p:"Neutral", f:"Closed", s:"Heel", c:"Driver", res:"The Tight Draw", desc:"Heel gear-effect (Right) fights the Closed face (Left)."},
+        {p:"Outside-In", f:"Open", s:"Toe", c:"Driver", res:"The 'Stall' Fade", desc:"Path/Face slice, Toe-gear fights it. Weak, short fade."},
+        {p:"Outside-In", f:"Open", s:"Toe", c:"Iron", res:"The Slice-Flare", desc:"Face open + toe twist = Massive distance loss."},
+        {p:"Outside-In", f:"Closed", s:"Heel", c:"Driver", res:"The Pull-Fade", desc:"Face/Path hook, Heel-gear fights it. Low, straight pull."},
+        {p:"Outside-In", f:"Closed", s:"Heel", c:"Iron", res:"The Violent Pull", desc:"Path/Face left, Heel rotation slams it further left."},
+        {p:"Outside-In", f:"Closed", s:"Toe", c:"Iron", res:"The Deep Hook", desc:"Stacking hook forces. Ball dives left immediately."},
+        {p:"Neutral", f:"Open", s:"Heel", c:"Iron", res:"The Weak Slice", desc:"Open face made worse by heel rotation. Common miss."},
+        {p:"Neutral", f:"Closed", s:"Toe", c:"Iron", res:"The Hard Draw", desc:"Closed face made more extreme by toe rotation."},
+        {p:"Neutral", f:"Square", s:"Toe", c:"Iron", res:"The Slight Draw", desc:"Turns left because toe hit opens the face slightly."},
+        {p:"Neutral", f:"Square", s:"Heel", c:"Iron", res:"The Slight Fade", desc:"Turns right because heel hit closes the face slightly."},
+        {p:"Any", f:"Any", s:"Shank", c:"Any", res:"The Hosel Rocket", desc:"45° Right. Total deflection. Check your address distance!"}
+    ];
+
+    function diag() {
+        const path = document.getElementById('p').value;
+        const face = document.getElementById('f').value;
+        const strike = document.getElementById('s').value;
+        const club = document.getElementById('c').value;
+
+        let m = lib.find(i => strike === "Shank" && i.s === "Shank") || 
+                lib.find(i => i.p === path && i.f === face && i.s === strike && i.c === club) ||
+                lib.find(i => i.p === path && i.f === face && i.s === strike && i.c === "Any");
+
+        if (m) {
+            document.getElementById('out').style.display = 'block';
+            document.getElementById('resT').innerText = m.res;
+            document.getElementById('resD').innerText = m.desc;
+        }
+    }
+</script>
+</body>
+</html>
