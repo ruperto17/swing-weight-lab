@@ -6,17 +6,18 @@
     <title>Adam Young Shot Tracker</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; font-family: 'Inter', sans-serif; padding-bottom: 80px; }
+        body { background-color: #f8f9fa; font-family: 'Inter', sans-serif; padding-bottom: 100px; }
         .card { border-radius: 12px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
         .stat-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f1f1; }
+        .stat-row:last-child { border-bottom: none; }
         .stat-label { font-weight: 600; color: #444; flex-grow: 1; }
         .counter-group { display: flex; align-items: center; gap: 15px; }
-        .btn-counter { width: 40px; height: 40px; border-radius: 8px; border: 1px solid #dee2e6; background: white; font-weight: bold; display: flex; align-items: center; justify-content: center; user-select: none; }
-        .btn-counter:active { background-color: #e9ecef; }
-        .count-display { min-width: 20px; text-align: center; font-weight: 700; color: #0d6efd; font-size: 1.1rem; }
-        .section-header { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; color: #888; font-weight: 800; margin-bottom: 10px; margin-top: 10px; }
-        .footer-credit { font-size: 0.7rem; text-align: center; margin-top: 30px; color: #adb5bd; padding: 0 20px; }
-        .sticky-tools { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; box-shadow: 0 -4px 12px rgba(0,0,0,0.05); }
+        .btn-counter { width: 44px; height: 44px; border-radius: 8px; border: 1px solid #dee2e6; background: white; font-weight: bold; display: flex; align-items: center; justify-content: center; user-select: none; transition: background 0.1s; }
+        .btn-counter:active { background-color: #0d6efd; color: white; border-color: #0d6efd; }
+        .count-display { min-width: 25px; text-align: center; font-weight: 700; color: #0d6efd; font-size: 1.2rem; }
+        .section-header { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; color: #888; font-weight: 800; margin-bottom: 10px; margin-top: 20px; }
+        .footer-credit { font-size: 0.7rem; text-align: center; margin-top: 30px; color: #adb5bd; padding: 0 20px; line-height: 1.5; }
+        .sticky-tools { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; box-shadow: 0 -4px 12px rgba(0,0,0,0.05); z-index: 1000; }
     </style>
 </head>
 <body>
@@ -24,98 +25,106 @@
 <div class="container py-4" style="max-width: 500px;">
     <div class="text-center mb-4">
         <h4 class="fw-bold">Performance Tracker</h4>
-        <p class="text-muted small">Based on Adam Young's "The Practice Manual" Logic</p>
+        <p class="text-muted small">Adam Young Methodology</p>
     </div>
 
-    <div class="section-header">Driver Impact & Direction</div>
-    <div class="card p-3" id="driver-section">
-        </div>
+    <div class="section-header">Driver (Off the Tee)</div>
+    <div class="card p-3" id="driver-section"></div>
 
-    <div class="section-header">Approach / Iron Play</div>
-    <div class="card p-3" id="approach-section">
-        </div>
+    <div class="section-header">Approach (Irons/Wedges)</div>
+    <div class="card p-3" id="approach-section"></div>
 
-    <div class="section-header">Mental & Strategic Faults</div>
-    <div class="card p-3" id="mental-section">
-        </div>
+    <div class="section-header">Mental & Strategy</div>
+    <div class="card p-3" id="mental-section"></div>
 
     <div class="footer-credit">
-        Methodology based on work by <strong>Adam Young Golf</strong>. <br>
-        For full instructions, visit <a href="https://www.adamyounggolf.com" target="_blank" class="text-decoration-none">adamyounggolf.com</a>
-    </div>
-
-    <div class="text-center mt-4">
-        <a href="index.html" class="btn btn-link text-decoration-none text-muted small">← Return to Library</a>
+        Methodology © Adam Young Golf. <br>
+        Built for personal performance tracking and skill acquisition analysis.
     </div>
 </div>
 
 <div class="sticky-tools">
-    <button onclick="downloadCSV()" class="btn btn-primary fw-bold flex-grow-1">Download Round CSV</button>
-    <button onclick="resetTracker()" class="btn btn-outline-danger">Reset</button>
+    <button onclick="downloadCSV()" class="btn btn-primary fw-bold flex-grow-1 py-2">Download CSV</button>
+    <button onclick="resetTracker()" class="btn btn-outline-danger py-2">Reset</button>
 </div>
 
 <script>
-    const stats = {
-        driver: ["Toe", "Heel", "Left", "Right", "High", "Low"],
-        approach: ["Toe", "Heel", "Left", "Right", "Fat", "Thin"],
-        mental: ["Too Aggressive Strategy", "Mis-calculation", "Fear", "Club Selection", "Distracted", "Loss of Cue-Focus", "Mis-judge Conditions", "No Commitment"]
+    // Configuration with internal keys to prevent collisions
+    const schema = {
+        driver: { prefix: "DR", items: ["Toe", "Heel", "Left", "Right", "High", "Low"] },
+        approach: { prefix: "AP", items: ["Toe", "Heel", "Left", "Right", "Fat", "Thin"] },
+        mental: { prefix: "ME", items: ["Too Aggressive Strategy", "Mis-calculation", "Fear", "Club Selection", "Distracted", "Loss of Cue-Focus", "Mis-judge Conditions", "No Commitment"] }
     };
 
-    let data = {};
+    let roundData = {};
 
-    // Initialize/Load Data
     function init() {
-        const saved = localStorage.getItem('ay_tracker_data');
+        const saved = localStorage.getItem('ay_tracker_v2');
         if (saved) {
-            data = JSON.parse(saved);
+            roundData = JSON.parse(saved);
         } else {
-            Object.keys(stats).forEach(cat => {
-                stats[cat].forEach(item => { data[item] = 0; });
+            // Build unique keys: DR_Toe, AP_Toe, etc.
+            Object.values(schema).forEach(cat => {
+                cat.items.forEach(item => {
+                    roundData[`${cat.prefix}_${item}`] = 0;
+                });
             });
         }
         render();
     }
 
     function render() {
-        ['driver', 'approach', 'mental'].forEach(cat => {
-            const container = document.getElementById(`${cat}-section`);
-            container.innerHTML = stats[cat].map(item => `
-                <div class="stat-row">
-                    <span class="stat-label">${item}</span>
-                    <div class="counter-group">
-                        <div class="btn-counter" onclick="change('${item}', -1)">−</div>
-                        <div class="count-display">${data[item]}</div>
-                        <div class="btn-counter" onclick="change('${item}', 1)">+</div>
+        Object.keys(schema).forEach(catKey => {
+            const cat = schema[catKey];
+            const container = document.getElementById(`${catKey}-section`);
+            
+            container.innerHTML = cat.items.map(item => {
+                const dataKey = `${cat.prefix}_${item}`;
+                return `
+                    <div class="stat-row">
+                        <span class="stat-label">${item}</span>
+                        <div class="counter-group">
+                            <div class="btn-counter" onclick="change('${dataKey}', -1)">−</div>
+                            <div class="count-display">${roundData[dataKey]}</div>
+                            <div class="btn-counter" onclick="change('${dataKey}', 1)">+</div>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         });
-        localStorage.setItem('ay_tracker_data', JSON.stringify(data));
+        localStorage.setItem('ay_tracker_v2', JSON.stringify(roundData));
     }
 
-    function change(item, amt) {
-        data[item] = Math.max(0, data[item] + amt);
+    function change(dataKey, amt) {
+        roundData[dataKey] = Math.max(0, roundData[dataKey] + amt);
         render();
     }
 
     function resetTracker() {
-        if(confirm("Start a new round? This clears current totals.")) {
-            localStorage.removeItem('ay_tracker_data');
+        if(confirm("Confirm: Clear all stats for a new round?")) {
+            localStorage.removeItem('ay_tracker_v2');
             location.reload();
         }
     }
 
     function downloadCSV() {
-        let csvContent = "data:text/csv;charset=utf-8,Stat,Count\n";
-        Object.entries(data).forEach(([key, value]) => {
-            csvContent += `"${key}",${value}\n`;
+        let csvContent = "data:text/csv;charset=utf-8,Category,Stat,Count\n";
+        
+        // Loop through schema to ensure CSV is ordered and labeled correctly
+        Object.keys(schema).forEach(catKey => {
+            const cat = schema[catKey];
+            cat.items.forEach(item => {
+                const dataKey = `${cat.prefix}_${item}`;
+                const categoryLabel = catKey.charAt(0).toUpperCase() + catKey.slice(1);
+                csvContent += `${categoryLabel},"${item}",${roundData[dataKey]}\n`;
+            });
         });
         
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        const date = new Date().toISOString().split('T')[0];
-        link.setAttribute("download", `round_stats_${date}.csv`);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16);
+        link.setAttribute("download", `AY_Stats_${timestamp}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
