@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swing Weight & Lead Tape Lab</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f1f3f5; padding: 20px; font-family: 'Segoe UI', sans-serif; }
+        .card { max-width: 900px; margin: auto; border-radius: 15px; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+        .tuning-panel { background: #fffcf0; border-left: 5px solid #ffc107 !important; display: none; }
+        .sw-badge { font-size: 1.1rem; padding: 0.5em 0.8em; }
+        .spec-text { font-size: 0.85rem; color: #6c757d; }
+        .tape-result { font-size: 1.1rem; font-weight: 600; color: #198754; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card p-4 mb-4">
+        <h3 class="text-center mb-4">⛳ Swing Weight & Lead Tape Lab</h3>
+        
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label fw-bold">Club/Build Name</label>
+                <input type="text" id="clubName" class="form-control" placeholder="e.g. Srixon ZX7 7-Iron">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Weight</label>
+                <div class="input-group">
+                    <input type="number" id="weightVal" class="form-control" placeholder="440">
+                    <select id="weightUnit" class="form-select" style="max-width: 80px;">
+                        <option value="g">g</option>
+                        <option value="oz">oz</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Balance Point</label>
+                <div class="input-group">
+                    <input type="text" id="bpVal" class="form-control" placeholder="26 3/4">
+                    <select id="bpUnit" class="form-select" style="max-width: 80px;">
+                        <option value="in">in</option>
+                        <option value="cm">cm</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <button onclick="calculateAndAdd()" class="btn btn-dark w-100 py-2 fw-bold mt-4">Save to Build Log</button>
+    </div>
+
+    <div class="card p-4">
+        <h5 class="fw-bold mb-3">Build Log & Tuning Assistant</h5>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Club Name</th>
+                        <th>Specs (W / BP / Torque)</th>
+                        <th>Swing Weight</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="sessionBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let clubHistory = [];
+    const GRAMS_TO_OZ = 28.3495;
+    const SW_POINT_OZ_IN = 1.75;
+    const D0_BASELINE_OZ_IN = 213.5;
+
+    function parseMeasurement(input) {
+        input = input.trim();
+        if (!input.includes(' ')) {
+            return input.includes('/') ? eval(input) : parseFloat(input);
+        }
+        const parts = input.split(' ');
+        return parseFloat(parts[0]) + eval(parts[1]);
+    }
+
+    function calculateAndAdd() {
+        const name = document.getElementById('clubName').value || "Unnamed Club";
+        let weight = parseFloat(document.getElementById('weightVal').value);
+        let bpRaw = document.getElementById('bpVal').value;
+        const wUnit = document.getElementById('weightUnit').value;
+        const bUnit = document.getElementById('bpUnit').value;
+
+        if (isNaN(weight) || !bpRaw) return;
+
+        let bp = parseMeasurement(bpRaw);
+        if (wUnit === 'oz') weight *= GRAMS_TO_OZ;
+        if (bUnit === 'cm') bp /= 2.54;
+
+        const inchGrams = (bp - 14) * weight;
+        const ozIn = inchGrams / GRAMS_TO_OZ;
+        
+        let points = 30 + ((ozIn - D0_BASELINE_OZ_IN) / SW_POINT_OZ_IN);
+        points = Math.round(points * 10) / 10;
+
+        const club = { id: Date.now(), name, weight, bp, inchGrams, points };
+        clubHistory.push(club);
+        renderTable();
+    }
+
+    function formatSW(p) {
+        const scales = ['A','B','C','D','E','F','G'];
+        let sIdx = Math.floor(p / 10);
+        let val = p % 10;
+        if (val >= 9.95) { val = 0; sIdx++; }
+        return (scales[sIdx] || '?') + val.toFixed(1);
+    }
+
+    function renderTable() {
+        const body = document.getElementById('sessionBody');
+        body.innerHTML = clubHistory.map(c => `
+            <tr>
+                <td><strong>${c.name}</strong></td>
+                <td>
+                    <div class="spec-text">${c.weight.toFixed(1)}g / ${c.bp.toFixed(3)}"</div>
+                    <div class="small fw-bold text-muted">${c.inchGrams.toFixed(2)} inch-grams</div>
+                </td>
+                <td><span class="badge bg-primary sw-badge">${formatSW(c.points)}</span></td>
+                <td class="text-end">
+                    <button onclick="toggleTuning(${c.id})" class="btn btn-sm btn-outline-warning">Tune</button>
+                    <button onclick="deleteClub(${c.id})" class="btn btn-sm btn-outline-danger">×</button>
+                </td>
+            </tr>
+            <tr id="tune-${c.id}" class="tuning-panel">
+                <td colspan="4" class="p-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <span>Target Swing Weight:</span>
+                        <input type="text" id="target-${c.id}" class="form-control form-control-sm" style="width:80px" placeholder="D4.0">
+                        <button onclick="runTuning(${c.id})" class="btn btn-sm btn-warning fw-bold">Calculate Tape</button>
+                    </div>
+                    <div id="results-${c.id}" class="mt-3"></div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function toggleTuning(id) {
+        const el = document.getElementById(`tune-${id}`);
+        el.style.display = (el.style.display === 'table-row') ? 'none' : 'table-row';
+    }
+
+    function runTuning(id) {
+        const club = clubHistory.find(x => x.id === id);
+        const targetStr = document.getElementById(`target-${id}`).value.toUpperCase();
+        if (!targetStr) return;
+
+        const scaleMap = { 'A':0, 'B':10, 'C':20, 'D':30, 'E':40, 'F':50, 'G':60 };
+        const targetPoints = scaleMap[targetStr[0]] + parseFloat(targetStr.substring(1));
+        const pointsDiff = targetPoints - club.points;
+
+        let advice = "";
+        if (Math.abs(pointsDiff) < 0.05) {
+            advice = `<div class="text-success fw-bold">Club is already at target!</div>`;
+        } else if (pointsDiff > 0) {
+            // Increase SW: Add to head (approx 2.1g per 1.0 SW point)
+            const tapeGrams = (pointsDiff * 2.1).toFixed(2);
+            advice = `<div>To increase to <strong>${targetStr}</strong>:</div>
+                      <div class="tape-result">+ ${tapeGrams}g lead tape to the CLUBHEAD</div>`;
+        } else {
+            // Decrease SW: Add to butt (approx 4.0g per 1.0 SW point decrease)
+            const tapeGrams = (Math.abs(pointsDiff) * 4.0).toFixed(2);
+            advice = `<div>To decrease to <strong>${targetStr}</strong>:</div>
+                      <div class="tape-result">+ ${tapeGrams}g counter-weight to the BUTT/GRIP</div>`;
+        }
+
+        document.getElementById(`results-${id}`).innerHTML = advice;
+    }
+
+    function deleteClub(id) {
+        clubHistory = clubHistory.filter(c => c.id !== id);
+        renderTable();
+    }
+</script>
+</body>
+</html>
